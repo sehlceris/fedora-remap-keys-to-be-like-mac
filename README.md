@@ -12,8 +12,13 @@ over as Alt so nothing is lost.
 | Chord (Cmd = key next to space) | Action |
 |---|---|
 | Cmd+C / Cmd+V / Cmd+X | copy / paste / cut |
-| Cmd+Z | undo |
+| Cmd+A | select all |
+| Cmd+Z | undo (Cmd+Shift+Z = redo) |
 | Cmd+W | close tab (sends Ctrl+W) |
+| Cmd+R | reload |
+| Cmd+T / Cmd+N / Cmd+L | new tab / new window / address bar (Shift composes: Cmd+Shift+T reopens a tab) |
+| Cmd+S / Cmd+F / Cmd+P / Cmd+O | save / find / print / open |
+| Cmd+Q | close window (sends Alt+F4) |
 | Cmd+Tab | app switcher |
 | Cmd tap | GNOME overview (still sends Super) |
 | Win key | acts as Alt (Alt+F4-style accelerators, menus) |

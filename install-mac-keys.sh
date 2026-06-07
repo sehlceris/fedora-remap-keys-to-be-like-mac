@@ -255,6 +255,23 @@ leftmeta = layer(alt)
 c = C-c
 v = C-v
 x = C-x
+# Select all
+a = C-a
+# Reload (browsers); in shells this lands on Ctrl+R history search
+r = C-r
+# Browser set: new tab, new window, focus address bar.
+# Shift composes: Cmd+Shift+T reopens a tab, Cmd+Shift+N = private window.
+t = C-t
+n = C-n
+l = C-l
+# Editor set: save, find, print, open.
+# (In a shell, Alt+S sends C-s = freeze output; C-q unfreezes.)
+s = C-s
+f = C-f
+p = C-p
+o = C-o
+# Quit window (Alt+F4 equivalent of macOS Cmd+Q)
+q = A-f4
 # Undo
 z = C-z
 # Close tab: sends Ctrl+W (Firefox/Chrome close-tab). Note: applies in
@@ -269,7 +286,6 @@ tab = M-tab
 # Uncomment individual lines below (inside this same [cmd:M] layer) to
 # enable them. None of these touch the physical Ctrl key.
 #
-# q = A-f4                # Cmd+Q  → close window
 # space = macro(leftmeta) # Cmd+Space → GNOME overview / launcher
 # left = home             # Cmd+Left  → start of line
 # right = end             # Cmd+Right → end of line
