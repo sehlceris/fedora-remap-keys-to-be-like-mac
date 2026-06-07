@@ -34,12 +34,6 @@ a grep guard that aborts if a generated config would ever bind
 `control`/`leftcontrol`/`rightcontrol` as a mapping source, and the install
 verification re-checks the installed file.
 
-### Terminal caveat
-
-Without keyd's GNOME Shell extension there is no per-application scoping, so
-the cmd-layer chords are global: in a terminal, Cmd+C sends Ctrl+C (SIGINT) —
-use the terminal's native Ctrl+Shift+C / Ctrl+Shift+V to copy/paste there.
-
 ## Install
 
 ```bash
@@ -57,6 +51,24 @@ use the terminal's native Ctrl+Shift+C / Ctrl+Shift+V to copy/paste there.
 - Records everything it changed in `/var/lib/mac-keys-script/state`.
 - Idempotent — safe to re-run; re-runs converge with no duplication.
 
+## Customizing key combinations
+
+All mappings live in [`mac-keys.conf`](mac-keys.conf) — a plain keyd config.
+To add, change, or remove a chord, edit the `[cmd:M]` layer and re-run the
+installer (it validates, installs, and hot-reloads keyd):
+
+```ini
+b = C-b        # example: Cmd+B → Ctrl+B (bold)
+```
+
+```bash
+./install-mac-keys.sh
+```
+
+Pre-written extras (Cmd+Space, line jumps, Option-key word jumps) are at the
+bottom of the file, commented out. Edit the repo copy, not
+`/etc/keyd/default.conf` — the installer overwrites the installed copy.
+
 ## Uninstall
 
 ```bash
@@ -68,6 +80,32 @@ The default run restores your previous config (if one was backed up), reloads
 keyd, and removes only what the installer added — it only ever deletes a
 config carrying the script's sentinel marker. Running it when nothing is
 installed exits 0 cleanly. Both scripts support `--dry-run`.
+
+## Gotchas
+
+- **Chords are global, not per-app.** Without keyd's GNOME Shell extension
+  there is no per-application scoping, so every Cmd chord sends its Ctrl
+  chord everywhere — most visibly in terminals:
+  - Cmd+C sends Ctrl+C = **SIGINT**, not copy. Use the terminal's native
+    Ctrl+Shift+C / Ctrl+Shift+V.
+  - Cmd+S sends Ctrl+S = **freezes terminal output** (Ctrl+Q unfreezes).
+  - Cmd+W sends Ctrl+W = delete-word in shells.
+- **The remap is system-wide at the input-device level** — it applies on
+  the lock screen, GDM login, and virtual consoles too, and to any
+  keyboard you plug in (`[ids] *`), where the Alt/Win swap may not match
+  an external keyboard's physical layout.
+- **Bare Cmd tap still sends Super**, so tapping the Cmd key opens the
+  GNOME overview. Holding it for chords does not.
+- **Cmd+Q closes the focused window** (Alt+F4), it does not quit the whole
+  app like macOS.
+- **Hand-edits to `/etc/keyd/default.conf` are overwritten** by the next
+  installer run (the sentinel on line 1 marks it as managed) — edit
+  `mac-keys.conf` in the repo instead.
+- **`keyd monitor` needs the keyd group**, which only takes effect after
+  logging out and back in. The mappings themselves work immediately.
+- **If something goes wrong**, `sudo systemctl stop keyd` instantly returns
+  the keyboard to stock behavior; `./uninstall-mac-keys.sh` reverts the
+  config cleanly.
 
 ## Tested on
 

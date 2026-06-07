@@ -9,7 +9,10 @@
 #     Requires keyd >= 2.2.
 #   * Confirms the config path/extension the installed keyd actually reads
 #     (via `man keyd` — default.conf vs default.cfg differs across versions),
-#     then writes it (backing up any pre-existing user config) implementing:
+#     then installs the mac-keys.conf template that sits next to this script
+#     (backing up any pre-existing user config). Edit mac-keys.conf to
+#     add/remove key combinations, then re-run this script. The template
+#     implements:
 #       - Physical swap: leftmeta (Win) <-> leftalt, so a Cmd-position
 #         thumb key sits next to the spacebar.
 #       - Cmd+C/V/X -> copy/paste/cut, Cmd+Tab -> app switch.
@@ -227,80 +230,26 @@ if [[ -n $ST_CFG_PATH && $ST_CFG_PATH != "$CFG" ]]; then
     note "WARNING: state file recorded $ST_CFG_PATH previously; keyd now reads $CFG."
 fi
 
-# ------------------------------------------------- 2. generate the config
-log "Step 2: generate keyd config"
+# ------------------------------------------------- 2. load config template
+# The key mappings live in mac-keys.conf next to this script — edit that
+# file to add/remove combinations, then re-run this installer.
+log "Step 2: load keyd config template"
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+TEMPLATE="$SCRIPT_DIR/mac-keys.conf"
+if [[ ! -f $TEMPLATE ]]; then
+    echo "FATAL: config template not found: $TEMPLATE" >&2
+    exit 1
+fi
+if ! head -n1 "$TEMPLATE" | grep -qF "$SENTINEL_GREP"; then
+    echo "FATAL: $TEMPLATE is missing the '$SENTINEL_GREP' sentinel on line 1." >&2
+    echo "The sentinel is how (un)install distinguishes our managed config" >&2
+    echo "from a user-edited one — restore that first line." >&2
+    exit 1
+fi
+note "Using template: $TEMPLATE"
 TMP_CFG=$(mktemp)
 trap 'rm -f "$TMP_CFG"' EXIT
-cat > "$TMP_CFG" <<'EOF'
-# MANAGED-BY: mac-keys-script v1 — do not edit by hand
-[ids]
-*
-
-[main]
-# Physical swap: on the ThinkPad bottom row (Fn Ctrl Win Alt Space) the
-# key directly left of the spacebar is Alt — that is where macOS Cmd
-# sits, so Alt becomes the cmd layer and the Win key takes over as Alt
-# (a true swap; Alt+F4-style accelerators stay reachable via Win).
-# layer(...) rather than bare keycode assignments — verified against
-# keyd 2.6.0, which warns on direct modifier-keycode binds.
-leftalt = layer(cmd)
-leftmeta = layer(alt)
-
-# The "cmd" layer behaves like a modifier; bare taps still send Meta
-# so things like the GNOME overview on Super remain usable.
-[cmd:M]
-# Copy / paste / cut. keyd application-conditional output is used so that
-# terminals get the shift-chord and GUI apps get the plain chord.
-# NOTE: verify behaviour per the verification step below.
-c = C-c
-v = C-v
-x = C-x
-# Select all
-a = C-a
-# Reload (browsers); in shells this lands on Ctrl+R history search
-r = C-r
-# Browser set: new tab, new window, focus address bar.
-# Shift composes: Cmd+Shift+T reopens a tab, Cmd+Shift+N = private window.
-t = C-t
-n = C-n
-l = C-l
-# Editor set: save, find, print, open.
-# (In a shell, Alt+S sends C-s = freeze output; C-q unfreezes.)
-s = C-s
-f = C-f
-p = C-p
-o = C-o
-# Quit window (Alt+F4 equivalent of macOS Cmd+Q)
-q = A-f4
-# Undo
-z = C-z
-# Close tab: sends Ctrl+W (Firefox/Chrome close-tab). Note: applies in
-# every app (no per-app scoping without the keyd GNOME extension), so
-# Cmd+W in e.g. a shell sends Ctrl+W (delete-word) there too.
-w = C-w
-# App switching
-tab = M-tab
-
-# ──────────────────────────────────────────────────────────────────────
-# OPTIONAL muscle-memory extras — DISABLED by default.
-# Uncomment individual lines below (inside this same [cmd:M] layer) to
-# enable them. None of these touch the physical Ctrl key.
-#
-# space = macro(leftmeta) # Cmd+Space → GNOME overview / launcher
-# left = home             # Cmd+Left  → start of line
-# right = end             # Cmd+Right → end of line
-#
-# Word-jump on the Option position (the Win key, which acts as Alt after
-# the swap above) requires replacing `leftmeta = layer(alt)` in [main]
-# with a custom layer. To enable, change that line and add the block:
-#
-#   leftmeta = layer(opt)
-#
-#   [opt:A]
-#   left = C-left           # Opt+Left  → previous word
-#   right = C-right         # Opt+Right → next word
-# ──────────────────────────────────────────────────────────────────────
-EOF
+cp "$TEMPLATE" "$TMP_CFG"
 
 ctrl_guard "$TMP_CFG"
 note "Ctrl-guard passed: config contains no remap of any Ctrl key."
