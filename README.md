@@ -96,6 +96,12 @@ installed exits 0 cleanly. Both scripts support `--dry-run`.
   an external keyboard's physical layout.
 - **Bare Cmd tap still sends Super**, so tapping the Cmd key opens the
   GNOME overview. Holding it for chords does not.
+- **Super+L (GNOME screen lock) is unreachable.** Cmd+L is claimed by the
+  address-bar mapping (`l = C-l`) and the Win key acts as Alt, so no key
+  emits Super+L. Lock via `loginctl lock-session`, remove the `l = C-l`
+  line, or rebind GNOME's lock shortcut. Other unmapped Super chords pass
+  through fine — only keys claimed in the `[cmd:M]` layer shadow their
+  Super shortcut.
 - **Cmd+Q closes the focused window** (Alt+F4), it does not quit the whole
   app like macOS.
 - **Hand-edits to `/etc/keyd/default.conf` are overwritten** by the next
