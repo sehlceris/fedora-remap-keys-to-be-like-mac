@@ -47,10 +47,14 @@ verification re-checks the installed file.
 ## Install
 
 ```bash
-./install-mac-keys.sh                       # ThinkPad layout (default)
+./install-mac-keys.sh                       # prompts for layout (interactive)
 ./install-mac-keys.sh --layout standard     # standard US desktop layout
 ./install-mac-keys.sh --dry-run             # preview without changing anything
 ```
+
+Run without `--layout` on a terminal and the installer asks which layout to
+use. When piped (e.g. `curl … | bash`) it can't prompt, so it defaults to
+`thinkpad`.
 
 - Installs keyd from the [`alternateved/keyd` COPR](https://copr.fedorainfracloud.org/coprs/alternateved/keyd/)
   (falls back to building from source if COPR fails); requires keyd >= 2.2.
@@ -65,7 +69,8 @@ verification re-checks the installed file.
 
 ## Keyboard layout
 
-Pick the layout that matches your keyboard's bottom row with `--layout`:
+Pick the layout that matches your keyboard's bottom row with `--layout`, or
+omit it to be prompted interactively (defaults to `thinkpad` when piped):
 
 ```bash
 ./install-mac-keys.sh --layout thinkpad   # default

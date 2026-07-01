@@ -29,7 +29,9 @@
 #
 # Flags:
 #   --dry-run          Print every action without performing any of them.
-#   --layout <name>    Keyboard bottom-row layout to install (default: thinkpad).
+#   --layout <name>    Keyboard bottom-row layout to install. If omitted, the
+#                      installer prompts interactively when run on a terminal,
+#                      and falls back to 'thinkpad' when piped (e.g. curl | bash).
 #                        thinkpad  ThinkPad row 'Fn Ctrl Win Alt Space' — the key
 #                                  left of space is Alt, so Alt becomes the Cmd
 #                                  layer and Win takes over as Alt (a swap).
@@ -59,19 +61,36 @@ MIN_KEYD_VERSION=2.2
 
 DRY_RUN=0
 LAYOUT=thinkpad   # default keeps prior behaviour (ThinkPad bottom row)
+LAYOUT_SET=0      # was --layout given explicitly? if not, we may prompt
 VALID_LAYOUTS="thinkpad standard"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1 ;;
         --layout)
             [[ $# -ge 2 ]] || { echo "--layout requires a value ($VALID_LAYOUTS)" >&2; exit 2; }
-            LAYOUT=$2; shift ;;
-        --layout=*) LAYOUT=${1#*=} ;;
+            LAYOUT=$2; LAYOUT_SET=1; shift ;;
+        --layout=*) LAYOUT=${1#*=}; LAYOUT_SET=1 ;;
         -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1 (supported: --dry-run --layout <thinkpad|standard>)" >&2; exit 2 ;;
     esac
     shift
 done
+
+# If no layout was given, ask interactively when we have a real terminal.
+# Piped/non-interactive runs (e.g. curl | bash) keep the default so they
+# never hang waiting on stdin.
+if [[ $LAYOUT_SET -eq 0 && -t 0 ]]; then
+    echo "Select keyboard bottom-row layout:"
+    echo "  1) thinkpad  — ThinkPad bottom row (default)"
+    echo "  2) standard  — standard US desktop layout"
+    read -rp "Choice [1-2, Enter for default]: " _choice
+    case "$_choice" in
+        ""|1|thinkpad) LAYOUT=thinkpad ;;
+        2|standard)    LAYOUT=standard ;;
+        *) echo "FATAL: invalid choice '$_choice'." >&2; exit 2 ;;
+    esac
+    echo
+fi
 
 # Validate the layout up front so we fail clearly before touching anything.
 case " $VALID_LAYOUTS " in
