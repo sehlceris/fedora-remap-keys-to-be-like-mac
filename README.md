@@ -3,9 +3,17 @@
 macOS-style key remapping for a ThinkPad running Fedora (GNOME on Wayland),
 powered by [keyd](https://github.com/rvaiya/keyd).
 
-The key directly left of the spacebar (physical **Alt** on a ThinkPad — the
-spot where macOS Cmd sits) becomes a **Cmd** layer, and the **Win** key takes
-over as Alt so nothing is lost.
+The key directly left of the spacebar (where macOS Cmd sits) becomes a **Cmd**
+layer. Which physical key that is depends on your keyboard's bottom row, so the
+installer supports two layouts (see [Keyboard layout](#keyboard-layout) below):
+
+- **`thinkpad`** (default): the ThinkPad bottom row is `Fn Ctrl Win Alt Space`,
+  so physical **Alt** sits left of space. Alt becomes the Cmd layer and the
+  **Win** key takes over as Alt so nothing is lost (a true swap).
+- **`standard`**: a standard US desktop row is `Ctrl Alt Super Space Alt Fn`,
+  so physical **Super** sits left of space. Super becomes the Cmd layer; **Alt**
+  is already in the Option position (just like a Mac), so it is left untouched —
+  no swap needed.
 
 ## What you get
 
@@ -21,7 +29,7 @@ over as Alt so nothing is lost.
 | Cmd+Q | close window (sends Alt+F4) |
 | Cmd+Tab | app switcher |
 | Cmd tap | GNOME overview (still sends Super) |
-| Win key | acts as Alt (Alt+F4-style accelerators, menus) |
+| Win key (`thinkpad` layout) | acts as Alt (Alt+F4-style accelerators, menus) |
 
 Commented-out extras (Cmd+Q, Cmd+Space, line/word jumps) live at the bottom of
 the generated config — uncomment to taste.
@@ -37,7 +45,9 @@ verification re-checks the installed file.
 ## Install
 
 ```bash
-./install-mac-keys.sh            # add --dry-run to preview
+./install-mac-keys.sh                       # ThinkPad layout (default)
+./install-mac-keys.sh --layout standard     # standard US desktop layout
+./install-mac-keys.sh --dry-run             # preview without changing anything
 ```
 
 - Installs keyd from the [`alternateved/keyd` COPR](https://copr.fedorainfracloud.org/coprs/alternateved/keyd/)
@@ -51,10 +61,31 @@ verification re-checks the installed file.
 - Records everything it changed in `/var/lib/mac-keys-script/state`.
 - Idempotent — safe to re-run; re-runs converge with no duplication.
 
+## Keyboard layout
+
+Pick the layout that matches your keyboard's bottom row with `--layout`:
+
+```bash
+./install-mac-keys.sh --layout thinkpad   # default
+./install-mac-keys.sh --layout standard
+```
+
+| Layout | Bottom row | Key left of space | What becomes the Cmd layer |
+|---|---|---|---|
+| `thinkpad` (default) | `Fn Ctrl Win Alt Space` | Alt | Alt → Cmd layer, and Win → Alt (a swap) |
+| `standard` | `Ctrl Alt Super Space Alt Fn` | Super | Super → Cmd layer (Alt is already Option — no swap) |
+
+Only the `[main]` block differs between layouts. Each layout's `[main]` block
+lives in [`layouts/`](layouts/) (`layouts/thinkpad.conf`,
+`layouts/standard.conf`); the installer splices the chosen one into the shared
+[`mac-keys.conf`](mac-keys.conf) body to produce `/etc/keyd/default.conf`. An
+unknown `--layout` value aborts before anything is touched.
+
 ## Customizing key combinations
 
-All mappings live in [`mac-keys.conf`](mac-keys.conf) — a plain keyd config.
-To add, change, or remove a chord, edit the `[cmd:M]` layer and re-run the
+The shared mappings live in [`mac-keys.conf`](mac-keys.conf) — a plain keyd
+config with a placeholder marker where the layout's `[main]` block is spliced
+in. To add, change, or remove a chord, edit the `[cmd:M]` layer and re-run the
 installer (it validates, installs, and hot-reloads keyd):
 
 ```ini

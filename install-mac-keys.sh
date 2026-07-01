@@ -28,7 +28,18 @@
 #   ever violate this.
 #
 # Flags:
-#   --dry-run   Print every action without performing any of them.
+#   --dry-run          Print every action without performing any of them.
+#   --layout <name>    Keyboard bottom-row layout to install (default: thinkpad).
+#                        thinkpad  ThinkPad row 'Fn Ctrl Win Alt Space' — the key
+#                                  left of space is Alt, so Alt becomes the Cmd
+#                                  layer and Win takes over as Alt (a swap).
+#                        standard  Standard US row 'Ctrl Alt Super Space Alt Fn' —
+#                                  the key left of space is Super, so Super becomes
+#                                  the Cmd layer; Alt is already in the Option
+#                                  position, so no swap is needed.
+#
+# The final config is composed from the shared mac-keys.conf plus the chosen
+# layouts/<layout>.conf ([main] block), so one codebase serves both layouts.
 #
 # Idempotent: safe to run repeatedly; re-runs converge to the same state.
 #
@@ -47,13 +58,26 @@ KEYD_COPR=alternateved/keyd
 MIN_KEYD_VERSION=2.2
 
 DRY_RUN=0
-for arg in "$@"; do
-    case "$arg" in
+LAYOUT=thinkpad   # default keeps prior behaviour (ThinkPad bottom row)
+VALID_LAYOUTS="thinkpad standard"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --dry-run) DRY_RUN=1 ;;
+        --layout)
+            [[ $# -ge 2 ]] || { echo "--layout requires a value ($VALID_LAYOUTS)" >&2; exit 2; }
+            LAYOUT=$2; shift ;;
+        --layout=*) LAYOUT=${1#*=} ;;
         -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) echo "Unknown argument: $arg (supported: --dry-run)" >&2; exit 2 ;;
+        *) echo "Unknown argument: $1 (supported: --dry-run --layout <thinkpad|standard>)" >&2; exit 2 ;;
     esac
+    shift
 done
+
+# Validate the layout up front so we fail clearly before touching anything.
+case " $VALID_LAYOUTS " in
+    *" $LAYOUT "*) : ;;
+    *) echo "FATAL: unknown --layout '$LAYOUT' (supported: $VALID_LAYOUTS)." >&2; exit 2 ;;
+esac
 
 # ---------------------------------------------------------------- helpers
 if [[ $EUID -eq 0 ]]; then SUDO=(); else SUDO=(sudo); fi
@@ -230,14 +254,23 @@ if [[ -n $ST_CFG_PATH && $ST_CFG_PATH != "$CFG" ]]; then
     note "WARNING: state file recorded $ST_CFG_PATH previously; keyd now reads $CFG."
 fi
 
-# ------------------------------------------------- 2. load config template
-# The key mappings live in mac-keys.conf next to this script — edit that
-# file to add/remove combinations, then re-run this installer.
-log "Step 2: load keyd config template"
+# ------------------------------------------------- 2. compose config template
+# The shared mappings live in mac-keys.conf; the layout-specific [main] block
+# lives in layouts/<layout>.conf. We compose the two into the final config,
+# inserting the [main] block ahead of the [cmd:M] layer so the installed file
+# keeps its original, proven section order: sentinel, [ids], [main], [cmd:M].
+# Edit either file, then re-run this installer.
+log "Step 2: compose keyd config (layout: $LAYOUT)"
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 TEMPLATE="$SCRIPT_DIR/mac-keys.conf"
+LAYOUT_FILE="$SCRIPT_DIR/layouts/$LAYOUT.conf"
 if [[ ! -f $TEMPLATE ]]; then
-    echo "FATAL: config template not found: $TEMPLATE" >&2
+    echo "FATAL: shared config template not found: $TEMPLATE" >&2
+    exit 1
+fi
+if [[ ! -f $LAYOUT_FILE ]]; then
+    echo "FATAL: layout file not found: $LAYOUT_FILE" >&2
+    echo "Supported layouts: $VALID_LAYOUTS" >&2
     exit 1
 fi
 if ! head -n1 "$TEMPLATE" | grep -qF "$SENTINEL_GREP"; then
@@ -246,13 +279,42 @@ if ! head -n1 "$TEMPLATE" | grep -qF "$SENTINEL_GREP"; then
     echo "from a user-edited one — restore that first line." >&2
     exit 1
 fi
-note "Using template: $TEMPLATE"
+note "Using shared template: $TEMPLATE"
+note "Using layout file:     $LAYOUT_FILE"
+if ! grep -qF '# <<< MAC-KEYS LAYOUT INSERT >>>' "$TEMPLATE"; then
+    echo "FATAL: $TEMPLATE is missing the layout insertion marker." >&2
+    echo "Restore the '# <<< MAC-KEYS LAYOUT INSERT >>>' line so the installer" >&2
+    echo "knows where to splice in the layout's [main] block." >&2
+    exit 1
+fi
 TMP_CFG=$(mktemp)
 trap 'rm -f "$TMP_CFG"' EXIT
-cp "$TEMPLATE" "$TMP_CFG"
+# Compose: copy the shared body verbatim, but replace the single marker line
+# with the layout's [main] block. Result keeps the shared file's original
+# section order: sentinel (line 1), [ids], [main] (spliced in), [cmd:M].
+awk -v lf="$LAYOUT_FILE" '
+    /^# <<< MAC-KEYS LAYOUT INSERT >>>/ {
+        while ((getline line < lf) > 0) print line
+        close(lf)
+        next
+    }
+    { print }
+' "$TEMPLATE" > "$TMP_CFG"
+
+# Sanity: the composed file must still start with the sentinel and contain
+# exactly one [main] section.
+if ! head -n1 "$TMP_CFG" | grep -qF "$SENTINEL_GREP"; then
+    echo "FATAL: composed config lost its line-1 sentinel — refusing to install." >&2
+    exit 1
+fi
+MAIN_COUNT=$(grep -cE '^\[main\]' "$TMP_CFG" || true)
+if [[ $MAIN_COUNT -ne 1 ]]; then
+    echo "FATAL: composed config has $MAIN_COUNT [main] sections (expected exactly 1)." >&2
+    exit 1
+fi
 
 ctrl_guard "$TMP_CFG"
-note "Ctrl-guard passed: config contains no remap of any Ctrl key."
+note "Ctrl-guard passed: composed config contains no remap of any Ctrl key."
 
 # -------------------------------------- 3. detect per-application support
 # keyd's per-app overrides live in keyd-application-mapper + app.conf, and
