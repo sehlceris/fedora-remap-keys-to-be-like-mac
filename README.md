@@ -1,7 +1,9 @@
-# fedora-thinkpad-remap-keys-to-be-like-mac
+# fedora-remap-keys-to-be-like-mac
 
-macOS-style key remapping for a ThinkPad running Fedora (GNOME on Wayland),
-powered by [keyd](https://github.com/rvaiya/keyd).
+macOS-style key remapping for Fedora (GNOME on Wayland), powered by
+[keyd](https://github.com/rvaiya/keyd). Works with both **laptop** keyboards
+(e.g. ThinkPad) and **standard desktop** keyboards — pick your bottom-row
+layout with `--layout` (see [Keyboard layout](#keyboard-layout)).
 
 The key directly left of the spacebar (where macOS Cmd sits) becomes a **Cmd**
 layer. Which physical key that is depends on your keyboard's bottom row, so the
@@ -146,4 +148,6 @@ installed exits 0 cleanly. Both scripts support `--dry-run`.
 
 ## Tested on
 
-Fedora 44, GNOME on Wayland, ThinkPad X1 Carbon, keyd 2.6.0.
+Fedora 44, GNOME on Wayland, keyd 2.6.0. Developed on a ThinkPad X1 Carbon
+(`thinkpad` layout); the `standard` layout targets standard US desktop
+keyboards.
